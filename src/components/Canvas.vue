@@ -84,7 +84,10 @@ export default {
         grid-template-columns: 1fr 1fr 1fr
     }
     .toolbar {
-        border: 2px solid blueviolet;
+        border-left: 2px solid blueviolet;
+        border-bottom: 2px solid blueviolet;
+        border-top: 2px solid blueviolet;
+
         border-top-left-radius: 5px;
         border-bottom-left-radius: 5px;
         padding: 1px;

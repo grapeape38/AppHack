@@ -9,7 +9,7 @@ class ClientSocket {
   }
 
   initWS() {
-    var ws = new WebSocket("ws://localhost:" + location.port);
+    var ws = new WebSocket("ws://edustreamx.herokuapp.com:" + location.port);
     ws.onmessage = (event) => {
       this.processServerMessage(event.data);
     };
