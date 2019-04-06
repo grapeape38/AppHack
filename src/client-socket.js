@@ -9,7 +9,7 @@ class ClientSocket {
   }
 
   initWS() {
-    var ws = new WebSocket("ws://localhost:8080");
+    var ws = new WebSocket("ws://localhost:" + location.port);
     ws.onmessage = (event) => {
       this.processServerMessage(event.data);
     };

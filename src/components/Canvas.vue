@@ -17,7 +17,6 @@
             <canvas v-bind:ref="canvas" id="canvas"></canvas>
         </div>
         <div v-bind:class="{ hidden: broadcasting }">
-            <h3>Video element</h3>
             <video v-bind:ref="video" id="video"></video>
         </div>
     </div>
