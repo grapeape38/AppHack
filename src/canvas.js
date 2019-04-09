@@ -1,17 +1,11 @@
 class CanvasDraw {
-    constructor(canvas) {
+    constructor(canvas, width, height) {
         this.canvas = canvas
         this.ctx = canvas.getContext('2d')
         this.color = "black"
         this.pensize = 5
 
-        const width = 800;
-        const height = 500;
-        canvas.width = width; 
-        canvas.height = height;
         this.pts = []
-        var ps = 5
-
         this.canvas.onmousedown = (e) => this.pen = true;
         this.canvas.onmouseup = (e) => {
             this.pen = false;
@@ -21,16 +15,16 @@ class CanvasDraw {
             if (this.pen) this.pts.push({ x : e.offsetX, y : e.offsetY, color: this.color, pensize: this.pensize});
             this.repaint();
         }
-
-        this.ctx.fillStyle =  'white'
-        this.ctx.fillRect(0, 0, canvas.width, canvas.height);
-        this.ctx.fill()
-
+        this.resize(width, height);
     }
 
-    main() {
-       requestAnimationFrame(() => this.main());
-       //this.repaint();
+    resize(width, height) {
+      this.canvas.width = width; 
+      this.canvas.height = height; 
+      this.ctx.fillStyle = 'white'
+      this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+      this.ctx.fill()
+      this.repaint()
     }
 
     setFGColor(color) {

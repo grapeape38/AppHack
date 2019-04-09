@@ -1,6 +1,6 @@
 <template>
-    <div>
-        <div v-bind:class="{ hidden: !broadcasting }" class="canvasdiv">
+    <div class="mediadiv">
+        <div class="canvasdiv" v-bind:class="{ hidden: !broadcasting }">
             <div class="toolbar">
                 <div id="colors">
                     <div v-for="color in colors" v-bind:style="{ background: color }"
@@ -26,6 +26,7 @@
 <script>
 import CanvasDraw from '../canvas.js'
 import Vue from 'vue'
+import { setTimeout } from 'timers';
 export default {
     name: "Canvas",
     data: function() {
@@ -40,12 +41,18 @@ export default {
     props: ['canvasCallback', 'clientType', 'broadcasting'],
     mounted: function() {
         console.log("broadcasting: ", this.broadcasting)
-        if (this.broadcasting) {
-            this.cd = new CanvasDraw(canvas)
-            this.cd.main();
-        }
-
+        var width, height
+        width = canvas.clientWidth
+        height = canvas.clientHeight
+        this.cd = new CanvasDraw(canvas, width, height)
         this.canvasCallback(canvas, video)
+    },
+    watch: {
+        broadcasting: function() {
+            this.$nextTick(()=>
+                this.cd.resize(canvas.clientWidth, canvas.clientHeight)
+            )
+        } 
     },
     methods: {
         setFGColor(color) {
@@ -63,17 +70,19 @@ export default {
 </script>
 
 <style scoped>
+    .mediadiv{
+        height:85%;
+        border: 2px solid blueviolet;
+        border-radius: 5px;
+    }
     .canvasdiv {
-        width:60%;
-        float:left;
-        height:500px;
+        height:100%;
     }
     .hidden {
         display: none
     }
     .colorpick {
         height:30px;
-        width:30px;
         overflow: auto
     }
     #icondiv:hover  {
@@ -84,14 +93,10 @@ export default {
         grid-template-columns: 1fr 1fr 1fr
     }
     .toolbar {
-        border-left: 2px solid blueviolet;
-        border-bottom: 2px solid blueviolet;
-        border-top: 2px solid blueviolet;
-
+        /*border: 2px solid blueviolet;
         border-top-left-radius: 5px;
-        border-bottom-left-radius: 5px;
+        border-bottom-left-radius: 5px;*/
         padding: 1px;
-        width:94px;
         width: 10%;
         height:100%;
         float: left;
@@ -105,11 +110,8 @@ export default {
         opacity: 0.7;
     }
     #canvas {
-        border-top: 2px solid blueviolet;
-        border-bottom: 2px solid blueviolet;
-        border-right: 2px solid blueviolet;
-        border-top-right-radius: 5px;
-        border-bottom-right-radius: 5px;
+        border-left: 2px solid blueviolet;
         height:100%;
+        width:90%;
     }
 </style>

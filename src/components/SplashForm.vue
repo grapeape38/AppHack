@@ -16,7 +16,7 @@
   <b-button v-on:click="createRoom" id="submit">Create Classroom!</b-button>
   </form>
   <form v-else id="joinRoom">
-    <b-form-input id="roomID" v-model="roomID" placeholder="Classroom ID"></b-form-input>
+    <b-form-input id="roomID" v-model="roomName" placeholder="Classroom ID"></b-form-input>
     <b-form-input id="username" v-model="username" placeholder="Username"></b-form-input>
     <b-button v-on:click="joinRoom" id="submit">Join Room</b-button>
   </form>
@@ -32,12 +32,12 @@ input {
   margin: 10px;
 }
 .mainblock {
-  /*text-align: center;*/
-  margin: 0 auto 0 auto;
+  padding-top:10%;
+  margin-left: auto;
+  margin-right: auto;
   width: 50%;
 }
 </style>
-</template>
 
 <script>
 /* eslint-disable */
@@ -85,7 +85,7 @@ export default {
   },
   methods: {
     createRoom: function() {
-      postData("/queryRoom", { roomName: this.roomName })
+      postData("/queryRoom", { roomName: this.roomName})
         .then(respObj => {
           if (respObj.hasRoom) {
             this.error = "Room name taken";
@@ -97,20 +97,28 @@ export default {
           }
         })
         .catch(err => console.log("fetch error handling failed", err));
+        /* TESTING
+          this.$emit('clientType', 'teacher');
+          this.$emit('roomName', this.roomName);
+          this.$emit("username", this.username);*/
     },
     joinRoom: function() {
-      postData("/queryRoom", { roomName: this.roomID })
+      postData("/queryRoom", { roomName: this.roomName})
         .then(respObj => {
           if (! respObj.hasRoom) {
-            this.error = `Room '${this.roomID}' does not exist.`;
+            this.error = `Room '${this.roomName}' does not exist.`;
           }
           else {
             this.$emit('clientType', 'student');
-            this.$emit('roomID', this.roomID);
+            this.$emit('roomName', this.roomName);
             this.$emit("username", this.username);
           }
         })
         .catch(err => console.log("fetch error handling failed", err));
+        /*
+            this.$emit('clientType', 'student');
+            this.$emit('roomID', this.roomID);
+            this.$emit("username", this.username);*/
     }
   },
   props: {

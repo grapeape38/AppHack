@@ -1,8 +1,15 @@
 <template>
-    <div>
-        <b-button id="resumeCast" v-bind:class="{ hidden: broadcasting }">Become Broadcaster</b-button>
-        <div id="reqdiv" v-bind:class="{ hidden: !requestActive }">
-            <label class="request">Request: {{reqMsg}}</label>
+    <div id="dash">
+        <b-form-checkbox
+            id="chatEnable"
+            v-model="chatEnable"
+            name="chatEnable"
+            value="enabled"
+            unchecked-value="disabled"
+        >Enable chat</b-form-checkbox>
+        <b-button id="resumeCast" v-on:click="resumeCast" v-bind:class="{ hidden: broadcasting }">Become Broadcaster</b-button>
+        <div v-bind:class="{ hidden: activeReq == null}">
+            <label class="request">Request: {{activeReq ? activeReq.reqMsg : ''}}</label>
             <b-button v-on:click="grantReq" id="grantReq">Grant Request</b-button>
         </div>
     </div>
@@ -12,22 +19,30 @@
 <script>
 export default {
     name: "TeacherDash",
-    props: ['broadcasting', 'requestActive', 'reqMsg', "socket"],
+    props: ['broadcasting', "socket"],
+    data: function() {
+      return {
+        chatEnable: 'enabled',
+        activeReq: null
+        }
+    },
     watch: {
       socket(newv, old) {
         this.socket = newv;
-        this.socket.setReqActive = this.setReqActive;
+        this.socket.addRequest = this.addRequest;
       }
     },
     methods: { 
-      grantReq() {
-        console.log("button clicked");
-        this.$emit('grantReq', this.socket.rtcNode.clientID);
+      resumeCast() {
+        this.$emit('becomeBroadcaster')
       },
-      setReqActive(x)  {
-        this.requestActive = x;
+      grantReq() {
+        this.$emit('grantReq', this.activeReq.cid)
+        this.activeReq = null
+      },
+      addRequest(req)  {
+        this.activeReq = req;
       }
-
     }
 }
 </script>
@@ -35,11 +50,5 @@ export default {
 <style scoped>
 .hidden {
     display: none
-}
-
-#reqdiv {
-  position: absolute;
-  left: 10px;
-  top: 10px;
 }
 </style>

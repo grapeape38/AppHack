@@ -1,19 +1,39 @@
 <template>
-    <div>
-        <h1>Welcome to the Classroom</h1>
-        <div id="main">
-            <Canvas v-bind:broadcasting="broadcasting"
-                    clientType="clientType" :canvasCallback="canvasCallback"></Canvas>
-            <ChatBox :socket="socket" :username="username"></ChatBox>
-            <!-- <StudentDash v-on:requestAcc="requestAccess" :socket="socket" v-if="clientType==='student'" :broadcasting="broadcasting"></StudentDash>--> 
-            <!-- <TeacherDash v-on:grantReq="grantReq($event)" :socket="socket"
-            v-else :broadcasting="broadcasting" :requestActive="requestActive"></TeacherDash> -->
+    <div id="main">
+        <div id="canvasdash">
+          <Canvas v-bind:broadcasting="broadcasting"
+                  clientType="clientType" :canvasCallback="canvasCallback"></Canvas>
+          <StudentDash v-on:requestAcc="requestAccess" :socket="socket" v-if="clientType==='student'" :broadcasting="broadcasting"></StudentDash> 
+          <TeacherDash 
+          v-on:becomeBroadcaster="becomeBroadcaster"
+          v-on:grantReq="grantReq($event)" :socket="socket"
+          v-else :broadcasting="broadcasting"></TeacherDash>
         </div>
+        <ChatBox :socket="socket" :username="username"
+          :roomName="roomName"></ChatBox>
     </div>
 </template>
 
+<style>
+#dash {
+  height:15%;
+  padding-top:10px;
+}
+button {
+  margin: 10px;
+}
+#canvasdash {
+  float:left;
+  height:100%;
+  width:70%;
+}
+#main {
+  height: 100%;
+}
+</style>
+
 <script>
-import { TeacherNode, RTCNode }  from '../rtc.js'
+import { RTCNode }  from '../rtc.js'
 import Canvas from './Canvas'
 import ChatBox from './ChatBox'
 import StudentDash from './StudentDash'
@@ -37,12 +57,9 @@ function postData(url = ``, data = {}) {
     .catch(err => console.log("error with response from fetch", err));
 } 
 
-
-
-
 export default {
     name: "Classroom",
-    props: ["clientType", "canvas", "roomID", "roomName", "username"],
+    props: ["clientType", "canvas", "roomName", "username"],
     data: function() {
         return { 
           broadcasting: false,
@@ -64,21 +81,23 @@ export default {
             var video = v
             console.log("created room for type: ", this.clientType, canvas, video);
             if (this.clientType === "teacher") {
-              this.rtc = new TeacherNode(canvas, video);
+              this.rtc = new RTCNode(canvas, video);
               this.socket = this.rtc.socket;
               this.rtc.socket.checkWS().then(() => {
                 this.rtc.socket.sendMessage({ type: "createRoom", roomName: this.roomName });
                 console.log("sent create room req", this.roomName);
               })
               .catch(err => console.log("Unable to create classroom -- ws uninitialized", err));
+              this.rtc.streamCanvas()
             }
             else if (this.clientType === "student") {
-              this.rtc = new RTCNode(video);
+              this.rtc = new RTCNode(canvas, video);
               this.socket = this.rtc.socket;
               this.rtc.socket.checkWS().then(() => {
                 this.rtc.socket.sendMessage({ 
                   type: "joinRoom",
-                  roomName: this.roomID,
+                  username: this.username,
+                  roomName: this.roomName,
                 })
               })
               .catch(err => console.log("Unable to join classroom -- ", err));
@@ -86,20 +105,36 @@ export default {
             else {
               throw "Unknown client type: " + this.clientType;
             }
+            this.rtc.socket.becomeBroadcaster = this.becomeBroadcaster
           },
+        endBroadcast() {
+          console.log("ending broadcast")
+          this.broadcasting = false
+        },
+        becomeBroadcaster() {
+          console.log("becoming broadcaster")
+          if (!this.broadcasting) {
+            this.rtc.destroyIncoming()
+            this.broadcasting = true
+            if (this.clientType === 'student')
+              this.rtc.setTmpBroadcast(this.endBroadcast)
+            this.rtc.socket.sendMessage({type: "startCast"})
+            this.rtc.streamCanvas()
+          }
+        },
         requestAccess() {
           postData("/reqbroadcast", {
             cid: this.rtc.clientID,
           }).then(json => {})
-          .catch(err => console.log("err requsting access", err));
+          .catch(err => console.log("err requesting access", err));
         },
         grantReq(cid) {
           console.log("cid = ", cid);
           this.socket.sendMessage( {
             type: "grantBroadcast",
-            pid: this.rtc.clientID,
             cid: cid,
           })
+          this.broadcasting = false
         }
     }
 }

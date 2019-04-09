@@ -26,7 +26,15 @@ app.use(bodyParser.json());
 
 app.post("/queryRoom", (req, res) => {
   res.status(200).json(
-    { hasRoom: classrooms.has(req.body.roomName) }
+    { hasRoom: classrooms.has(req.body.roomName),
+     }
+  );
+});
+
+app.get("/queryRoom", (req, res) => {
+  res.status(200).json(
+    { participants: class_unames.get(req.query.roomName),
+     }
   );
 });
 
@@ -34,10 +42,11 @@ app.post("/reqbroadcast", (req, res) => {
     var cid = req.body.cid;
     var tnode = classroomSets.get(cid).root;
     console.log("broadcast rights requested by ", cid);
-
+    var uname = unames.get(cid)
     var tws = clients.get(tnode.clientID);
     sendMessage(tws, {
       type: "requestBroadcast",
+      username: uname,
       cid: cid,
     })
 
@@ -63,7 +72,9 @@ app.post("/reqbroadcast", (req, res) => {
 
 // map client ids to ws connection object
 const clients = new Map(); // map from client id to WS objects
+const unames = new Map(); //id to username
 const classrooms = new Map(); // map from class room names to PeerTree objects
+const class_unames = new Map();
 const peerNodes = new Map(); // used when client leaves to access node and reconnect children
 const classroomSets = new Map(); // map each participant id to peer tree object
 var id = 0;
@@ -136,23 +147,57 @@ function processClientMessage(msg, req, ws) {
       if (classrooms.has(msg.roomName)) return error("Room name already in use: " + msg.roomName, ws);
       console.log("created room", msg.roomName);
       classrooms.set(msg.roomName, new PeerTree(req.session.id));
+      unames.set(req.session.id, "teacher")
+      class_unames.set(msg.roomName, [{username: 'teacher', id: req.session.id}])
       break;
     case "joinRoom": // only attribute -- roomName
       if (req.session.id == undefined) return error("Unknown client attempting to join classroom", ws);
       var classTree = classrooms.get(msg.roomName);
       if (classTree == undefined) return error("Unable to join non-existent classroom " + msg.roomName, ws);
+      unames.set(req.session.id, msg.username);
+      var uname_list = class_unames.get(msg.roomName)
+      var uname_obj = {username: msg.username, id: req.session.id}
+      if (class_unames.get(msg.roomName) == undefined)  {
+        class_unames.set(msg.roomName, [uname_obj])
+      }
+      else
+        uname_list.push(uname_obj)
+      classTree.sendMessage({type: "userJoin", username: msg.username, id: req.session.id})
       classTree.addChild(req.session.id);
       break;
     case "userChat":
-      clients.forEach(ws => {
-        sendMessage(ws, { type: "addChat" , text: msg.text, username: msg.username });
-      });
+      var pt = classroomSets.get(req.session.id);
+      pt.sendMessage({ type: "addChat" , text: msg.text, username: unames.get(req.session.id) });
+      break;
+    case "startCast":
+      var pt = classroomSets.get(req.session.id)
+      var rootID = pt.rootID
+      var tnode = peerNodes.get(rootID);
+      console.log("connecting ", req.session.id, " with ", rootID);
+      if (rootID === req.session.id) {
+        if (pt.tmpRoot !== undefined) {
+          pt.addChild(pt.tmpRoot.clientID)
+          pt.tmpRoot = null
+        }
+      }
+      else {
+        var tnode = peerNodes.get(rootID);
+        var cnode = peerNodes.get(req.session.id);
+        detach(cnode)
+        pt.tmpRoot = cnode
+        connect(cnode, tnode);
+      }
       break;
     case "grantBroadcast":
-      var tnode = peerNodes.get(req.session.id);
+      if (!clients.has(msg.cid))
+        return error("Client id not found")
+      var childWS = clients.get(msg.cid)
+      var rootID = classroomSets.get(req.session.id).rootID
+      if (rootID != req.session.id)
+        return error("Invalid request")
+      tnode = clients.get(req.session.id);
       tnode.allowBroadcast = true;
-      var cnode = peerNodes.get(msg.cid);
-      connect(cnode, tnode);
+      sendMessage(childWS, { type: "startCast" })
       break;  
     default: return error("Unknown message type: " + msg.type, ws);
   }
@@ -204,11 +249,39 @@ class PeerNode {
   }
 }
 
+function detach(node) {
+  if (node.parentNode != null) {
+    console.log("detaching from parent")
+    node.parentNode.children.delete(node.clientID)
+    node.parentNode = null
+  }
+}
+
 class PeerTree {
   constructor(rootID) {
     this.rootID = rootID;
     this.root = new PeerNode(rootID);
+    this.tRoot = null
     classroomSets.set(rootID, this);
+  }
+
+  get tmpRoot() {
+    return this.tRoot
+  }
+
+  set tmpRoot(_tmpRoot) {
+    this.tRoot = _tmpRoot
+  }
+
+  sendMessage(msg) {
+    var q = [this.root]
+    while (q.length) {
+      var curr = q.pop()
+      var clientWS = clients.get(curr.clientID)
+      console.log('sending tree msg', msg)
+      sendMessage(clientWS, msg)
+      curr.children.forEach((child) => q.push(child))
+    }
   }
 
   // TODO wait for successful connection to update tree

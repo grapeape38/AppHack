@@ -1,5 +1,5 @@
 <template>
-    <div>
+    <div id="dash">
         <b-button id="reqBtn"
             v-on:click="requestAcc"
             v-bind:class="{ hidden: broadcasting }">Request Broadcast Access</b-button>

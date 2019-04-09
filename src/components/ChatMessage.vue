@@ -1,6 +1,6 @@
 <template>
 <li v-bind:class="{question: question}">
-    <span>{{message}}</span>
+    {{message}}
 </li>
 </template>
 

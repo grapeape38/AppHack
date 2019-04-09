@@ -6,10 +6,11 @@ class ClientSocket {
     this.ws = this.initWS();
     this.rtcNode = rtcNode;
     this.wsConnected = false;
+    this.becomeBroadcaster = null;
   }
 
   initWS() {
-    var ws = new WebSocket("ws://edustreamx.herokuapp.com:" + location.port);
+    var ws = new WebSocket("ws://"+location.host);
     ws.onmessage = (event) => {
       this.processServerMessage(event.data);
     };
@@ -62,12 +63,23 @@ class ClientSocket {
         this.rtcNode.destroyIncoming();
         alert("Classroom has been closed");
         break;
+      case "userJoin":
+        if (this.userJoin== undefined) throw "Join is uninitialized for this socket";
+        console.log(msg.username, msg.id)
+        this.userJoin(msg.username, msg.id);
       case "addChat":
         if (this.receiveChat == undefined) throw "Chat is uninitialized for this socket";
         this.receiveChat(msg.text, msg.username);
         break;
       case "requestBroadcast": 
-        this.setReqActive(true);
+        var req = {
+          reqMsg: `Allow ${msg.username} to broadcast`,
+          cid: msg.cid
+        }
+        this.addRequest(req);
+        break;
+      case "startCast":
+        this.becomeBroadcaster()
         break;
       case "serverError": 
         console.log("server error: ", msg.error);

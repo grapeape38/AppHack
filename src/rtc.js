@@ -3,12 +3,15 @@ import { ClientSocket } from './client-socket.js'
 import './simplepeer.min.js'
 
 class RTCNode {
-  constructor(vid) {
+  constructor(canvas, vid) {
+    this.canvas = canvas;
     this.stream = null;
     this.socket = new ClientSocket(this);
     this.outgoingRTC = new Map(); 
     this.incomingRTC = null; // single SimplePeer connection 
     this.vid = vid;
+    this.tmpBroadcast = false;
+    this.endBroadcast = null;
     console.log("rtc vid = ", vid);
   }
 
@@ -21,6 +24,12 @@ class RTCNode {
 
   set clientID(id) {
     this._clientID = id;
+  }
+
+  streamCanvas() {
+    if (this.canvas == undefined) throw "Must supply canvas parameter";
+    this.canvas.getContext("2d");  // get context once to avoid NS_UNAVAILABLE_ERROR
+    this.stream = this.canvas.captureStream();
   }
 
   /** RTCNode.createSourceRTC
@@ -54,9 +63,26 @@ class RTCNode {
         });
       }
     });
-    
+
+    rtc.on("close", () => {
+      console.log("deleting child, broke rtc connection")
+      this.outgoingRTC.delete(childID)
+      this.endTmpBroadcast();
+    })
     // update map
     this.outgoingRTC.set(childID, rtc);
+  }
+
+  setTmpBroadcast(endBroadcast) {
+    this.tmpBroadcast = true
+    this.endBroadcast = endBroadcast
+  }
+
+  endTmpBroadcast() {
+    if (this.tmpBroadcast) {
+      this.tmpBroadcast = false
+      this.endBroadcast()
+    }
   }
 
   createReceiverRTC(offer) {
@@ -98,6 +124,7 @@ class RTCNode {
 
   destroyIncoming() {
     this.incomingRTC.destroy();
+    this.incomingRTC = null
   }
 
   destroyOutgoing(cid) {
@@ -108,7 +135,7 @@ class RTCNode {
   }
 }
 
-class TeacherNode extends RTCNode {
+/*class TeacherNode extends RTCNode {
   constructor(canvas, vid) {
     super(vid);
     if (canvas == undefined) throw "Must supply canvas parameter";
@@ -118,16 +145,15 @@ class TeacherNode extends RTCNode {
   }
   /** Teacher.createReceiverRTC
    *    used to allow student to stream to class
-   */ 
   createReceiverRTC(offer) {
     this.ogStream = this.stream;
     return super.createReceiverRTC(offer);
   }
 
   destroyIncoming() {}
-}
+}*/
 
 export {
-  TeacherNode as TeacherNode,
+  //TeacherNode as TeacherNode,
   RTCNode as RTCNode,
 };
