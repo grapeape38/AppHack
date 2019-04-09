@@ -175,16 +175,21 @@ function processClientMessage(msg, req, ws) {
       var tnode = peerNodes.get(rootID);
       console.log("connecting ", req.session.id, " with ", rootID);
       if (rootID === req.session.id) {
-        if (pt.tmpRoot !== undefined) {
-          pt.addChild(pt.tmpRoot.clientID)
-          pt.tmpRoot = null
+        if (pt.tmpB !== undefined) {
+          //pt.addChild(pt.tmpRoot.clientID)
+          //pt.tmpRoot = null
+          parent = pt.tmpB.parentNode;
+          console.log("reconnecting ",
+            parent.clientID, " with ", pt.tmpB.clientID);
+          connect(parent, pt.tmpB)
         }
       }
       else {
         var tnode = peerNodes.get(rootID);
         var cnode = peerNodes.get(req.session.id);
-        detach(cnode)
-        pt.tmpRoot = cnode
+        //detach(cnode)
+        //pt.tmpRoot = cnode
+        pt.tmpB = cnode
         connect(cnode, tnode);
       }
       break;
@@ -207,8 +212,8 @@ function connect(parentNode, newChild) {
   var parWS = clients.get(parentNode.clientID);
   if (parWS == undefined) return error("Undefined parent: " + parentNode.clientID);
   // check if connection already exists
-  if (parentNode.children.has(newChild.clientID))
-    return error(`Already connected ${parentNode.clientID} with ${childNodec.clientID}`);
+  //if (parentNode.children.has(newChild.clientID))
+   // return error(`Already connected ${parentNode.clientID} with ${childNodec.clientID}`);
   sendMessage(parWS, { type: "initiateConnection", pid: parentNode.clientID, cid: newChild.clientID });
 }
 
@@ -261,16 +266,16 @@ class PeerTree {
   constructor(rootID) {
     this.rootID = rootID;
     this.root = new PeerNode(rootID);
-    this.tRoot = null
+    this._tmpB = null
     classroomSets.set(rootID, this);
   }
 
-  get tmpRoot() {
-    return this.tRoot
+  get tmpB() {
+    return this._tmpB
   }
 
-  set tmpRoot(_tmpRoot) {
-    this.tRoot = _tmpRoot
+  set tmpB(_tmpB) {
+    this._tmpB = _tmpB
   }
 
   sendMessage(msg) {
